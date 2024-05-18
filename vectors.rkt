@@ -1,6 +1,7 @@
-#lang racket
+#lang racket/gui
 
 #|
+vec3 vec3 (X X -> Boolean) -> Boolean
 Checks if two vectors are equal (their corresponding components are equal)
 
 Args:
@@ -15,6 +16,7 @@ Returns:
        (= (vec3-z v1) (vec3-z v2))))
 
 #|
+vec3 (X -> Number) -> Number
 Computes the primary hash code of a vector.
 
 Args:
@@ -28,6 +30,7 @@ Returns:
      (* 1 (vec3-z v))))
 
 #|
+vec3 (X -> Number) -> Number
 Computes the secondary hash code of a vector.
 
 Args:
@@ -41,7 +44,8 @@ Returns:
      (* 1 (vec3-y v))))
 
 #|
-Structure for representing a vector with 3 components
+(vec3 Number Number Number)
+Structure for representing a vector with 3 components.
 
 Fields:
     x: the first component
@@ -57,6 +61,7 @@ Fields:
   )
 
 #|
+vec3 -> String
 Converts a vector to a string representation.
 
 Args:
@@ -80,6 +85,7 @@ Returns:
   (vec3 (* (vec3-x vector) scalar) (* (vec3-y vector) scalar) (* (vec3-z vector) scalar)))
 
 #|
+(list vec3) -> vec3
 Adds vectors together.
 
 Args:
@@ -99,20 +105,35 @@ Returns:
           (vec3 (+ (vec3-x f) (vec3-x r)) (+ (vec3-y f) (vec3-y r)) (+ (vec3-z f) (vec3-z r)))))))
 
 #|
+vec3 vec3 -> vec3
+Subtracts vectors.
+
+Args:
+    v1: the vector to be subtracted from
+    v2: the vector to be subtracted
+Returns:
+    v1 - v2
+|#
+(define (vec3-subtract v1 v2) 
+  (vec3 (- (vec3-x v1) (vec3-x v2)) (- (vec3-y v1) (vec3-y v2)) (- (vec3-z v1) (vec3-z v2))))
+
+#|
+vec3 vec3 Number -> vec3
 Linearly interpolates between two vectors.
 
 Args:
     v1: the start vector
     v2: the end vector
     alpha: the progress between the two vectors (between 0 and 1)
-returns:
+Returns:
     the interpolated vector
 |#
 (define (vec3-lerp v1 v2 alpha)
   (vec3-add (vec3-scale (- 1 alpha) v1) (vec3-scale alpha v2)))
 
 #|
-Bilinearly interpolates between four vectors
+vec3 vec3 vec3 vec3 Number Number -> vec3
+Bilinearly interpolates between four vectors.
 
 Args:
     v1: the start vector
@@ -129,4 +150,14 @@ returns:
   (vec3-lerp (vec3-lerp v1 v2 alpha) (vec3-lerp v3 v4 alpha) beta))
 
 
-(provide (all-defined-out))
+
+(provide vec3
+         vec3-x
+         vec3-y
+         vec3-z
+         vec3-string
+         vec3-scale
+         vec3-add
+         vec3-subtract
+         vec3-lerp
+         vec3-bilerp)

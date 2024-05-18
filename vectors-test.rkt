@@ -1,4 +1,4 @@
-#lang racket
+#lang racket/gui
 (require rackunit
          "vectors.rkt")
 
@@ -11,10 +11,6 @@
 (define corner2 (vec3 1 1 0))
 (define corner3 (vec3 0 0 1))
 (define corner4 (vec3 1 1 1))
-
-;; HASHING TESTS
-(check-equal? (vec3-hash-code (vec3 12 34 56) +) 123456 "Primary hash code")
-(check-equal? (vec3-secondary-hash-code (vec3 12 34 56) +) 561234 "Secondary hash code")
 
 ;; STRING CONVERSION TESTS
 (check-equal? (vec3-string zero) "0 0 0" "Basic string conversion")
