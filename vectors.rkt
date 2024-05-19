@@ -143,12 +143,48 @@ Args:
     v
     alpha: the progress between x1/x2 and x3/x4
     beta: the progress between x1/x3 and x2/x4
-returns:
+Returns:
     the interpolated vector
 |#
 (define (vec3-bilerp v1 v2 v3 v4 alpha beta)
   (vec3-lerp (vec3-lerp v1 v2 alpha) (vec3-lerp v3 v4 alpha) beta))
 
+#|
+vec3 vec3 -> Number
+Calculates the dot product of two vectors.
+
+Args:
+    v1: the first vector being multiplied
+    v2: the second vector being multiplied
+Returns:
+    the dot product of v1 and v2
+|#
+(define (vec3-dot v1 v2)
+  (+ (* (vec3-x v1) (vec3-x v2)) (* (vec3-y v1) (vec3-y v2)) (* (vec3-z v1) (vec3-z v2))))
+
+#|
+vec3 -> Number
+Calculates the squared norm (magnitude squared) of a vector.
+
+Args:
+    v: the vector being considered
+Returns:
+    the norm of v, squared
+|#
+(define (vec3-sq-norm v)
+  (vec3-dot v v))
+
+#|
+vec3 -> Number
+Calculates the squared norm (magnitude squared) of a vector.
+
+Args:
+    v: the vector being considered
+Returns:
+    the norm of v, squared
+|#
+(define (vec3-norm v)
+  (sqrt (vec3-sq-norm v)))
 
 
 (provide vec3
@@ -160,4 +196,7 @@ returns:
          vec3-add
          vec3-subtract
          vec3-lerp
-         vec3-bilerp)
+         vec3-bilerp
+         vec3-dot
+         vec3-sq-norm
+         vec3-norm)

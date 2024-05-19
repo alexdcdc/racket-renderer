@@ -1,5 +1,7 @@
 #lang racket/gui
-(require "vectors.rkt")
+(require "vectors.rkt"
+         "colors.rkt"
+         "sphere.rkt")
 
 (define IMAGE_HEIGHT 600)
 (define IMAGE_WIDTH 800)
@@ -16,17 +18,8 @@
 ;;Camera coordinates
 (define cam (vec3 0 0 (- CAMERA_DEPTH)))
 
-
-
-
-
-
-(define frame (new frame%
-                   [label "Hello world!"]
-                   [width IMAGE_WIDTH]
-                   [height IMAGE_HEIGHT]))
-
-
+;;List of shapes to be rendered
+(define shapes (list (sphere (vec3 0 0 4) 0.5 (scolor 1 0 0)) (sphere (vec3 -3 -3 6) 1 (scolor 0 1 0)) (sphere (vec3 -2 2 10) 2 (scolor 0 0 1))))
 
 #|
 (ray vec3 vec3)
@@ -50,6 +43,42 @@ Returns:
 |#
 (define (get-cam-ray v c)
   (ray v (vec3-subtract v c)))
+
+#|
+(sphere-intersect-ray sphere ray)
+Finds the value t such that o * t(dir) (representing a ray) intersects a sphere.
+
+Args:
+    sphere: the sphere involved in the intersection
+    ray: the ray involved in the intersection
+Returns:
+    the solution t, or -1 if there is no positive solution
+|#
+
+(define (sphere-intersect-ray r s)
+  (local [(define sphere-to-ray (vec3-subtract (ray-o r) (sphere-center s)))
+          (define a (vec3-sq-norm (ray-dir r)))
+          (define b (* 2 (vec3-dot sphere-to-ray (ray-dir r))))
+          (define c (- (vec3-sq-norm sphere-to-ray) (* (sphere-radius s) (sphere-radius s))))]
+    (solve-quad a b c)))
+
+#|
+ray (list sphere) -> sphere or false
+Finds the sphere (if any) that a ray first intersects.
+
+Args:
+    r: the ray being considered
+    shapes: the list of spheres that could be intersected
+Returns:
+    the first sphere that the ray intersects, or false if the ray does not intersect any spheres.
+|#
+(define (find-intersecting-shape r shapes)
+  (local [(define valid-intersections
+            (filter (lambda (p) (>= (cdr p) 0))
+                    (map (lambda (shape) (cons shape (sphere-intersect-ray r shape))) shapes)))]
+    (if (empty? valid-intersections)
+        false
+        (car (argmin cdr valid-intersections)))))
 
 #|
 dc Integer Integer Color -> void
@@ -106,25 +135,32 @@ Returns:
    (vec3-bilerp x1 x2 x3 x4 (get-percent-width x) (get-percent-height y))
    c))
 
+
 (define (color-pixel-by-ray dc x y)
-  (local [(define cam-ray-dir (ray-dir (get-cam-ray-to-image x y cam)))]
-    (color-pixel dc x y (make-color (exact-floor (* 255 (+ 1/2 (/ (vec3-x cam-ray-dir) IMAGE_PLANE_WIDTH))))
-                                    (exact-floor (* 255 (+ 1/2 (/ (vec3-y cam-ray-dir) IMAGE_PLANE_HEIGHT))))
-                                    127))))
+  (local [(define cam-ray (get-cam-ray-to-image x y cam))
+          (define intersecting-sphere (find-intersecting-shape cam-ray shapes))
+          (define col (if (false? intersecting-sphere) (scolor 0 0 0) (sphere-color intersecting-sphere)))]
+    (color-pixel dc x y (unscale-color col))))
 
 (define (color-canvas dc)
   (for ([x IMAGE_WIDTH])
     (for ([y IMAGE_HEIGHT])
       (color-pixel-by-ray dc x y))))
 
- 
-(send frame show #t)
+(define frame (new frame%
+                   [label "Hello world!"]
+                   [width IMAGE_WIDTH]
+                   [height IMAGE_HEIGHT]))
 
 (new canvas% [parent frame]
      [paint-callback
       (lambda (canvas dc)
         (color-canvas dc))])
 
+(send frame show #t)
+
 (provide ray
-         get-cam-ray)
+         get-cam-ray
+         sphere-intersect-ray
+         find-intersecting-shape)
 

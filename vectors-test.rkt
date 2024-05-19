@@ -36,3 +36,11 @@
 (check-equal? (vec3-bilerp corner1 corner2 corner3 corner4 0 0) corner1 "Bilerp with alpha, beta = 0")
 (check-equal? (vec3-bilerp corner1 corner2 corner3 corner4 1 1) corner4 "Bilerp with alpha, beta = 1")
 (check-equal? (vec3-bilerp corner1 corner2 corner3 corner4 0.5 0.5) (vec3 0.5 0.5 0.5) "Bilerp with alpha, beta between 0 and 1")
+
+;; DOT PRODUCT TESTS
+(check-equal? (vec3-dot v1 zero) 0 "Dot product with zero vector")
+(check-equal? (vec3-dot v1 v2) -10 "Dot product with two nonzero vectors")
+
+;; NORM TESTS
+(check-equal? (vec3-sq-norm v1) 14 "Squared norm")
+(check-equal? (vec3-norm v1) (sqrt 14) "Unsquared norm")
