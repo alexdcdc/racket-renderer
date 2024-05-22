@@ -186,6 +186,69 @@ Returns:
 (define (vec3-norm v)
   (sqrt (vec3-sq-norm v)))
 
+#|
+vec3 -> vec3
+Normalizes a vector (scales it down to magnitude 1)
+
+Args:
+    v: the vector being normalized
+Returns:
+    a vector in the same direction as v with magnitude 1
+|#
+(define (vec3-normalize v)
+  (vec3-scale (/ 1 (vec3-norm v)) v))
+
+#|
+vec3 vec3 -> vec3
+Gets the unit vector pointing from one vector to another.
+
+Args:
+    src: the source vector
+    dest: the destination vector
+Returns:
+    a unit vector pointing from src to dest
+|#
+(define (vec3-get-dir src dest)
+  (vec3-normalize (vec3-subtract dest src)))
+
+#|
+(ray vec3 vec3)
+Structure for representing a ray with 3 components.
+
+Fields:
+    o: the origin of the ray
+    dir: the direction of the ray
+|#
+(struct ray (o dir) #:transparent)
+
+#|
+vec3 vec3 -> ray
+Produces a ray starting at the source vector and pointing toward the destination vector.
+
+Args:
+    src: the source vector
+    dest: the destination vector
+Outputs:
+    A ray from src through dest
+|#
+(define (get-ray src dest)
+  (ray src (vec3-subtract dest src)))
+
+#|
+ray Number -> vec3
+Evaluates the expression o + t(d) for a ray to get a point on its corresponding line.
+
+Args:
+    r: the ray being considered
+    t: the parameter of the line expression
+Outputs:
+   A point on the corresponding line of the ray given by the expression above.
+|#
+(define (ray-evaluate r t)
+  (vec3-add (ray-o r) (vec3-scale t (ray-dir r))))
+
+
+
 
 (provide vec3
          vec3-x
@@ -199,4 +262,11 @@ Returns:
          vec3-bilerp
          vec3-dot
          vec3-sq-norm
-         vec3-norm)
+         vec3-norm
+         vec3-normalize
+         vec3-get-dir
+         ray
+         ray-o
+         ray-dir
+         get-ray
+         ray-evaluate)

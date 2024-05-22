@@ -44,3 +44,20 @@
 ;; NORM TESTS
 (check-equal? (vec3-sq-norm v1) 14 "Squared norm")
 (check-equal? (vec3-norm v1) (sqrt 14) "Unsquared norm")
+
+;; NORMALIZATION TESTS
+(check-equal? (vec3-normalize (vec3 1 0 0)) (vec3 1 0 0) "Normalizing unit-length vector")
+(check-equal? (vec3-normalize (vec3 1 2 2)) (vec3 1/3 2/3 2/3) "Normalizing non-unit-length vector")
+
+;; DIRECTION TESTS
+(check-equal? (vec3-get-dir (vec3 0 0 0) (vec3 0 0 3)) (vec3 0 0 1) "Getting direction, z-component only")
+(check-equal? (vec3-get-dir (vec3 3 4 1) (vec3 12 16 1)) (vec3 3/5 4/5 0) "Getting direction, x and y-component only")
+
+;; GET RAY TESTS
+(check-equal? (get-ray (vec3 0 0 0) (vec3 0 0 0)) (ray (vec3 0 0 0) (vec3 0 0 0)) "Ray from origin to origin") 
+(check-equal? (get-ray (vec3 1 2 3) (vec3 4 7 5)) (ray (vec3 1 2 3) (vec3 3 5 2)) "Ray between two distinct non-zero points")
+
+;; RAY EVALUATION TESTS
+(check-equal? (ray-evaluate (ray zero v1) 0) zero "Ray evaluation with origin zero, t = 0")
+(check-equal? (ray-evaluate (ray zero v1) 3) (vec3 3 6 9) "Ray evaluation with origin zero, t > 0")
+(check-equal? (ray-evaluate (ray v1 v3) 2) (vec3 3 0 5) "Ray evaluation with non-zero origin, t > 0")

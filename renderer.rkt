@@ -1,35 +1,40 @@
 #lang racket/gui
 (require "vectors.rkt"
          "colors.rkt"
-         "sphere.rkt")
+         "sphere.rkt"
+         "materials.rkt"
+         "lights.rkt")
 
 (define IMAGE_HEIGHT 600)
 (define IMAGE_WIDTH 800)
-(define IMAGE_PLANE_HEIGHT 1.5)
-(define IMAGE_PLANE_WIDTH 2)
-(define CAMERA_DEPTH 1)
+(define IMAGE_PLANE_HEIGHT 1.72)
+(define IMAGE_PLANE_WIDTH 2.56)
+(define IMAGE_PLANE_DEPTH 0.5)
+(define CAMERA_DEPTH -2)
+
+(define REFLECTION_DEPTH 3)
 
 ;; Coordinates of corners of the image plane
-(define x1 (vec3 (/ IMAGE_PLANE_WIDTH -2) (/ IMAGE_PLANE_HEIGHT 2) 0))
-(define x2 (vec3 (/ IMAGE_PLANE_WIDTH 2) (/ IMAGE_PLANE_HEIGHT 2) 0))
-(define x3 (vec3 (/ IMAGE_PLANE_WIDTH -2) (/ IMAGE_PLANE_HEIGHT -2) 0))
-(define x4 (vec3 (/ IMAGE_PLANE_WIDTH 2) (/ IMAGE_PLANE_HEIGHT -2) 0))
+(define x1 (vec3 (/ IMAGE_PLANE_WIDTH -2) (/ IMAGE_PLANE_HEIGHT 2) (- IMAGE_PLANE_DEPTH)))
+(define x2 (vec3 (/ IMAGE_PLANE_WIDTH 2) (/ IMAGE_PLANE_HEIGHT 2) (- IMAGE_PLANE_DEPTH)))
+(define x3 (vec3 (/ IMAGE_PLANE_WIDTH -2) (/ IMAGE_PLANE_HEIGHT -2) (- IMAGE_PLANE_DEPTH)))
+(define x4 (vec3 (/ IMAGE_PLANE_WIDTH 2) (/ IMAGE_PLANE_HEIGHT -2) (- IMAGE_PLANE_DEPTH)))
 
 ;;Camera coordinates
 (define cam (vec3 0 0 (- CAMERA_DEPTH)))
 
 ;;List of shapes to be rendered
-(define shapes (list (sphere (vec3 0 0 4) 0.5 (scolor 1 0 0)) (sphere (vec3 -3 -3 6) 1 (scolor 0 1 0)) (sphere (vec3 -2 2 10) 2 (scolor 0 0 1))))
+(define shapes (list
+                (sphere (vec3 -1.1 0.6 -1) 0.2
+                        (mat (scolor 0.1 0.1 0.1) (scolor 0.5 0.5 0.9) (scolor 0.7 0.7 0.7) (scolor 0.1 0.1 0.2) 20))
+                (sphere (vec3 0.2 -0.1 -1) 0.5
+                        (mat (scolor 0.1 0.1 0.1) (scolor 0.9 0.5 0.5) (scolor 0.7 0.7 0.7) (scolor 0.2 0.1 0.1) 20))
+                (sphere (vec3 1.2 -0.5 -1.75) 0.4
+                        (mat (scolor 0.1 0.1 0.1) (scolor 0.1 0.5 0.1) (scolor 0.7 0.7 0.7) (scolor 0.8 0.9 0.8) 20))))
 
-#|
-(ray vec3 vec3)
-Structure for representing a ray with 3 components.
-
-Fields:
-    o: the origin of the ray
-    dir: the direction of the ray
-|#
-(struct ray (o dir) #:transparent)
+(define ambient-light (scolor 0.5 0.5 0.5))
+(define lights (list (light (vec3 -3 -0.5 1) (scolor 0.8 0.3 0.3) (scolor 0.8 0.8 0.8))
+                     (light (vec3 3 2 1) (scolor 0.4 0.4 0.9) (scolor 0.8 0.8 0.8))))
 
 #|
 vec3 -> ray
@@ -45,42 +50,6 @@ Returns:
   (ray v (vec3-subtract v c)))
 
 #|
-(sphere-intersect-ray sphere ray)
-Finds the value t such that o * t(dir) (representing a ray) intersects a sphere.
-
-Args:
-    sphere: the sphere involved in the intersection
-    ray: the ray involved in the intersection
-Returns:
-    the solution t, or -1 if there is no positive solution
-|#
-
-(define (sphere-intersect-ray r s)
-  (local [(define sphere-to-ray (vec3-subtract (ray-o r) (sphere-center s)))
-          (define a (vec3-sq-norm (ray-dir r)))
-          (define b (* 2 (vec3-dot sphere-to-ray (ray-dir r))))
-          (define c (- (vec3-sq-norm sphere-to-ray) (* (sphere-radius s) (sphere-radius s))))]
-    (solve-quad a b c)))
-
-#|
-ray (list sphere) -> sphere or false
-Finds the sphere (if any) that a ray first intersects.
-
-Args:
-    r: the ray being considered
-    shapes: the list of spheres that could be intersected
-Returns:
-    the first sphere that the ray intersects, or false if the ray does not intersect any spheres.
-|#
-(define (find-intersecting-shape r shapes)
-  (local [(define valid-intersections
-            (filter (lambda (p) (>= (cdr p) 0))
-                    (map (lambda (shape) (cons shape (sphere-intersect-ray r shape))) shapes)))]
-    (if (empty? valid-intersections)
-        false
-        (car (argmin cdr valid-intersections)))))
-
-#|
 dc Integer Integer Color -> void
 Colors a pixel at a specified position in the given drawing context.
 
@@ -91,32 +60,8 @@ Args:
     col: the color of the pixel
 |#
 (define (color-pixel dc x y col)
-  (begin (send dc set-pen col 1 'solid)
+  (begin (send dc set-pen (unscale-color col) 1 'solid)
          (send dc draw-point x y)))
-
-#|
-Integer -> Number
-Gets the percentage width of a specified pixel in the image for linear interpolation
-
-Args:
-    x: the x coordinate of the pixel
-Returns:
-    x divided by the image width
-|#
-
-(define (get-percent-width x) (/ x IMAGE_WIDTH))
-
-#|
-Integer -> Number
-Gets the percentage height of a specified pixel in the image for linear interpolation
-
-Args:
-    y: the y coordinate of the pixel
-Returns:
-    y divided by the image height
-|#
-
-(define (get-percent-height y) (/ y IMAGE_HEIGHT))
 
 #|
 Integer Integer vec3 -> ray
@@ -129,23 +74,108 @@ Args:
 Returns:
     a ray originating from the image plane pointing at the pixel
 |#
-
 (define (get-cam-ray-to-image x y c)
   (get-cam-ray
-   (vec3-bilerp x1 x2 x3 x4 (get-percent-width x) (get-percent-height y))
+   (vec3-bilerp x1 x2 x3 x4 (/ x IMAGE_WIDTH) (/ y IMAGE_HEIGHT))
    c))
 
+#|
+sphere vec3 (list light) -> scolor
+Calculates the color of a sphere at a specified point factoring in lighting.
 
-(define (color-pixel-by-ray dc x y)
-  (local [(define cam-ray (get-cam-ray-to-image x y cam))
-          (define intersecting-sphere (find-intersecting-shape cam-ray shapes))
-          (define col (if (false? intersecting-sphere) (scolor 0 0 0) (sphere-color intersecting-sphere)))]
-    (color-pixel dc x y (unscale-color col))))
+Args:
+    s: the sphere being considered
+    p: the point on the sphere being considered
+    lights: a list of all lights in the scene
+Returns:
+    the color of the lit sphere
+|#
+(define (get-lit-color s p lights r depth)
+  (local [
+          (define normal (sphere-surface-normal s p))
+          (define mat (sphere-mat s))
+          (define view (vec3-normalize (vec3-scale -1 (ray-dir r))))
+          
+          (define (get-ambient-light)
+            (scolor-mult (mat-amb mat) ambient-light))
+          
+          (define (get-diffuse-light lights)
+            (if (empty? lights)
+                (scolor 0 0 0)
+                (local [
+                        (define l (first lights))
+                        (define l-vec (vec3-get-dir p (light-pos l)))
+                        (define l-n-dot (vec3-dot normal l-vec))
+                        ]
+                  (if (or (< l-n-dot 0) (obstacle-exists? p (light-pos l) shapes))
+                      (get-diffuse-light (rest lights))
+                      (scolor-add (scolor-scale l-n-dot
+                                                (scolor-mult (mat-dif mat) (light-intensity-dif l)))
+                                  (get-diffuse-light (rest lights)))))))
+          
+          (define (get-specular-light lights)
+            (if (empty? lights)
+                (scolor 0 0 0)
+                (local [
+                        (define l (first lights))
+                        (define l-vec (vec3-get-dir p (light-pos l)))
+                        (define l-n-dot (vec3-dot normal l-vec))
+                        (define refl (vec3-subtract (vec3-scale (* 2 (vec3-dot normal l-vec)) normal) l-vec))
+                        (define v-r-dot (vec3-dot view refl))
+                        ]
+                  (if (or (< l-n-dot 0) (< v-r-dot 0) (obstacle-exists? p (light-pos l) shapes))
+                      (get-specular-light (rest lights))
+                      (scolor-add (scolor-scale (expt v-r-dot (mat-shine mat))
+                                                (scolor-mult (mat-spec mat) (light-intensity-spec l)))
+                                  (get-specular-light (rest lights)))))))
+          
+          (define (get-refl-light)
+            (local [
+                    (define refl (vec3-subtract (vec3-scale (* 2 (vec3-dot normal view)) normal) view))
+                    ]
+              (scolor-mult (mat-refl mat) (color-pixel-by-ray (ray p refl) (- depth 1)))))
+          ]
+    (scolor-clamp (scolor-add
+                   (get-ambient-light)
+                   (get-diffuse-light lights)
+                   (get-specular-light lights)
+                   (get-refl-light)
+                   ))))
 
+
+#|
+dc Integer Integer -> scolor
+Finds the appropriate color for a pixel by casting a ray out.
+
+Args:
+    r: the ray being cast
+|#
+(define (color-pixel-by-ray r depth)
+  (if (<= depth 0)
+      (scolor 0 0 0)
+      (local [
+              (define intersecting-sphere (find-intersecting-shape r shapes))
+              (define col (if (false? intersecting-sphere)
+                              (scolor 0 0 0)
+                              (get-lit-color intersecting-sphere
+                                             (sphere-intersection-point r intersecting-sphere)
+                                             lights
+                                             r
+                                             depth)))
+              ]
+        col)))
+
+#|
+dc -> void
+Colors the entire drawing context according to the rendered image.
+
+Args:
+    dc: the drawing context
+|#
 (define (color-canvas dc)
   (for ([x IMAGE_WIDTH])
     (for ([y IMAGE_HEIGHT])
-      (color-pixel-by-ray dc x y))))
+      (color-pixel dc x y (color-pixel-by-ray (get-cam-ray-to-image x y cam) REFLECTION_DEPTH)))))
 
 (define frame (new frame%
                    [label "Hello world!"]
@@ -157,10 +187,8 @@ Returns:
       (lambda (canvas dc)
         (color-canvas dc))])
 
-(send frame show #t)
+(define (render) (send frame show #t))
 
 (provide ray
-         get-cam-ray
-         sphere-intersect-ray
-         find-intersecting-shape)
+         get-cam-ray)
 
