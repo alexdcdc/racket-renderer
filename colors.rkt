@@ -28,19 +28,28 @@ Returns:
 
 #|
 Color -> scolor
-Unscales a scaled color to a 0-255 scale.
+Unscales a scaled color to a 0-255 scale, clamping as needed.
 
 Args:
-    c: the color to be unscaled
+    sc: the color to be unscaled
 Returns:
     the unscaled color (0-255 scale)
 |#
 (define (unscale-color sc)
-  (make-color (exact-round (* (scolor-r sc) 255))
-              (exact-round (* (scolor-g sc) 255))
-              (exact-round (* (scolor-b sc) 255))))
+  (local [(define c (scolor-clamp sc))]
+    (make-color (exact-round (* (scolor-r c) 255))
+                (exact-round (* (scolor-g c) 255))
+                (exact-round (* (scolor-b c) 255)))))
 
+#|
+scolor -> scolor
+Clamps a scaled color between 0 and 1 in each component.
 
+Args:
+    col: the color to be clamped
+Returns:
+    the clamped color
+|#
 (define (scolor-clamp col)
   (local [
           (define (clamp n)
@@ -104,6 +113,20 @@ Returns:
 (define (scolor-scale n col)
   (scolor (* n (scolor-r col)) (* n (scolor-g col)) (* n (scolor-b col))))
 
+#|
+(list scolor) -> scolor
+Averages a non-empty list of scolors
+
+Args:
+    scs: the list of scolors
+Returns:
+    the average of all scolors in scs
+|#
+
+(define (scolor-avg scs n)
+  (scolor-scale (/ 1 n) (apply scolor-add scs)))
+  
+
 (provide scolor
          scolor-r
          scolor-g
@@ -113,4 +136,5 @@ Returns:
          scolor-clamp
          scolor-add
          scolor-mult
-         scolor-scale)
+         scolor-scale
+         scolor-avg)

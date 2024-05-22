@@ -13,6 +13,8 @@
 (define CAMERA_DEPTH -2)
 
 (define REFLECTION_DEPTH 3)
+(define AA-SAMPLES-X 2)
+(define AA-SAMPLES-Y 2)
 
 ;; Coordinates of corners of the image plane
 (define x1 (vec3 (/ IMAGE_PLANE_WIDTH -2) (/ IMAGE_PLANE_HEIGHT 2) (- IMAGE_PLANE_DEPTH)))
@@ -74,14 +76,24 @@ Args:
 Returns:
     a ray originating from the image plane pointing at the pixel
 |#
-(define (get-cam-ray-to-image x y c)
-  (get-cam-ray
-   (vec3-bilerp x1 x2 x3 x4 (/ x IMAGE_WIDTH) (/ y IMAGE_HEIGHT))
-   c))
+(define (get-cam-rays-to-image x y c)
+  (local [
+          (define min-x (/ x IMAGE_WIDTH))
+          (define min-y (/ y IMAGE_HEIGHT))
+          (define delta-x (/ (/ 1 IMAGE_WIDTH) AA-SAMPLES-X))
+          (define delta-y (/ (/ 1 IMAGE_HEIGHT) AA-SAMPLES-Y))
+          ]
+    (build-list (* AA-SAMPLES-X AA-SAMPLES-Y) ;;gets sub rays for the current pixel for anti-aliasing
+                (lambda (n) 
+                  (get-cam-ray
+                   (vec3-bilerp x1 x2 x3 x4
+                                (+ min-x (* (quotient n AA-SAMPLES-Y) delta-x))
+                                (+ min-y (* (remainder n AA-SAMPLES-Y) delta-y)))
+                   c)))))
 
 #|
 sphere vec3 (list light) -> scolor
-Calculates the color of a sphere at a specified point factoring in lighting.
+Calculates the color of a sphere at a specified point factoring in lighting, modeled via Phong illumination.
 
 Args:
     s: the sphere being considered
@@ -135,12 +147,12 @@ Returns:
                     ]
               (scolor-mult (mat-refl mat) (color-pixel-by-ray (ray p refl) (- depth 1)))))
           ]
-    (scolor-clamp (scolor-add
-                   (get-ambient-light)
-                   (get-diffuse-light lights)
-                   (get-specular-light lights)
-                   (get-refl-light)
-                   ))))
+    (scolor-add
+     (get-ambient-light)
+     (get-diffuse-light lights)
+     (get-specular-light lights)
+     (get-refl-light)
+     )))
 
 
 #|
@@ -175,7 +187,11 @@ Args:
 (define (color-canvas dc)
   (for ([x IMAGE_WIDTH])
     (for ([y IMAGE_HEIGHT])
-      (color-pixel dc x y (color-pixel-by-ray (get-cam-ray-to-image x y cam) REFLECTION_DEPTH)))))
+      (local [
+              (define rays (get-cam-rays-to-image x y cam))
+              (define cols (map (lambda (x) (color-pixel-by-ray x REFLECTION_DEPTH)) rays))
+              ]
+        (color-pixel dc x y (scolor-avg cols (* AA-SAMPLES-X AA-SAMPLES-Y)))))))
 
 (define frame (new frame%
                    [label "Hello world!"]
