@@ -2,7 +2,7 @@
 (require "vectors.rkt"
          "colors.rkt"
          "materials.rkt")
-(define TOLERANCE 1E-6)
+(define TOLERANCE 1E-8)
 
 #|
 (sphere vec3 Number scolor)
